@@ -1,0 +1,95 @@
+plugins {
+    id 'org.springframework.boot' version '2.4.5'
+    id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+    id 'java'
+    id "com.ewerk.gradle.plugins.querydsl" version "1.0.10"
+    id 'pl.exsio.querydsl.entityql' version "0.0.12"
+    id 'idea'
+    id 'maven'
+}
+
+group = 'com.entityql'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '11'
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+    querydsl.extendsFrom compileClasspath
+}
+
+repositories {
+    gradlePluginPortal()
+    mavenLocal()
+    mavenCentral()
+    maven {
+        url = uri('https://jitpack.io')
+    }
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-data-jdbc'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-jdbc'
+    compileOnly 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    runtimeOnly 'com.h2database:h2'
+    runtimeOnly 'mysql:mysql-connector-java'
+    annotationProcessor 'org.projectlombok:lombok'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    compile("com.querydsl:querydsl-jpa")
+    compile("com.querydsl:querydsl-apt") // querydsl
+    implementation("org.reflections:reflections:0.9.11") // entityql
+    implementation("com.github.eXsio:querydsl-entityql:3.1.0") // entityql
+    implementation("com.querydsl:querydsl-sql:4.2.2") // querydsl-sql (Querydsl-JPA 버전과 통일)
+    implementation("com.querydsl:querydsl-sql-spring:4.2.2") // querydsl-sql (Querydsl-JPA 버전과 통일)
+    implementation 'joda-time:joda-time:2.9.4'
+    implementation 'org.bgee.log4jdbc-log4j2:log4jdbc-log4j2-jdbc4.1:1.16'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+//querydsl start
+def querydslDir = "$buildDir/generated/querydsl"
+querydsl {
+    library = "com.querydsl:querydsl-apt"
+    jpa = true
+    querydslSourcesDir = querydslDir
+}
+compileQuerydsl {
+    options.annotationProcessorPath = configurations.querydsl
+}
+sourceSets {
+    main.java.srcDir querydslDir
+}
+
+clean.doLast {
+    file(querydslDir).deleteDir()
+}
+//querydsl end
+
+//entityql start
+def entityQlDir = "$buildDir/generated/entityql"
+def defaultPackage = 'com.entityql.'
+
+entityql {
+    generators = [
+        generator = {
+            type = 'JPA'
+            sourceClasses = ['com.entityql.bookstore.domain.entity.Book', 'com.entityql.store.domain.entity.Store']
+            destinationPackage = defaultPackage + 'domain.entity'
+            destinationPath = file(entityQlDir).absolutePath
+            filenamePattern = 'E%s.java'
+        }
+    ]
+    sourceSets.main.java.srcDirs += [entityQlDir]
+    idea.module.generatedSourceDirs += file(entityQlDir)
+}
+
+clean.doLast {
+    file(entityQlDir).deleteDir()
+}
+//entityql end
